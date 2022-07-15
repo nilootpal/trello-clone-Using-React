@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd'
 import { ContentDnD, MainContent, ContentHeader, ListCard, TaskCardWrapper } from './Content.style'
 import { v4 as uuid } from 'uuid';
@@ -6,92 +6,32 @@ import { HiDotsHorizontal, HiPlus } from 'react-icons/hi'
 import { CgClose } from 'react-icons/cg'
 import { FcGlobe } from 'react-icons/fc'
 import { AiOutlineStar } from 'react-icons/ai'
-import { saveToLocalStorage, loadFromLocalStorage } from './store';
-
-const columnsFromLS = {
-    [uuid()]: {
-        name: 'To Do',
-        items: [
-            {id: uuid(), content: 'Helpdesk Call AA999'},
-            {id: uuid(), content: 'Helpdesk Call BB999'}
-        ]
-    },
-    [uuid()]: {
-        name: 'Development',
-        items: [
-            {id: uuid(), content: 'Helpdesk Call EE999'},
-            {id: uuid(), content: 'Helpdesk Call CC999'}
-        ]
-    },
-    [uuid()]: {
-        name: 'Testing',
-        items: [
-            {id: uuid(), content: 'Helpdesk Call DD999'},
-        ]
-    },
-    [uuid()]: {
-        name: 'Done',
-        items: [
-            {id: uuid(), content: 'Helpdesk Call GG999'},
-            {id: uuid(), content: 'Helpdesk Call FF999'}
-        ]
-    }
-}
-
-const onDragEnd = (result, columns, setColumns) => {
-    if (!result.destination) return;
-    const { source, destination } = result;
-  
-    if (source.droppableId !== destination.droppableId) {
-      const sourceColumn = columns[source.droppableId];
-      const destColumn = columns[destination.droppableId];
-      const sourceItems = [...sourceColumn.items];
-      const destItems = [...destColumn.items];
-      const [removed] = sourceItems.splice(source.index, 1);
-      destItems.splice(destination.index, 0, removed);
-      setColumns({
-        ...columns,
-        [source.droppableId]: {
-          ...sourceColumn,
-          items: sourceItems
-        },
-        [destination.droppableId]: {
-          ...destColumn,
-          items: destItems
-        }
-      });
-    } else {
-      const column = columns[source.droppableId];
-      const copiedItems = [...column.items];
-      const [removed] = copiedItems.splice(source.index, 1);
-      copiedItems.splice(destination.index, 0, removed);
-      setColumns({
-        ...columns,
-        [source.droppableId]: {
-          ...column,
-          items: copiedItems
-        }
-      });
-    }
-  };
-
+import { saveToLocalStorage, loadFromLocalStorage, onDragEnd } from './helper';
 
 const Content = () => { 
+    //ref for new list
     const inputRef = useRef();
+
+    //columns for updating and retrieving from the local storage as well as displaying it in the DOM
     const [columns, setColumns] = useState(loadFromLocalStorage());
 
-    useEffect(()=>{
-        // if(Object.keys(loadFromLocalStorage()).length === 0){
-        //     saveToLocalStorage(columnsFromLS);
-        // }
-        // else{
-            saveToLocalStorage(columns)
-        // }
-         
-    }, [columns])
-    
+    //newList for adding newList to the window
     const [newList, setNewList] = useState('');
 
+    //to observe the change in columns size
+    const [colSize, setcolSize] = useState(Object.keys(columns).length)
+
+    // const [refs, setRefs] = useState(useRef([...Array(colSize)].map(() => React.createRef())))
+
+    useEffect(()=>{
+        //saving to local storage
+        saveToLocalStorage(columns) 
+
+        //changing col size after every edit
+        setcolSize(Object.keys(columns).length)
+    }, [columns])
+    
+    //creating an list of objects to toggle the visiblility of (adding another task field)
     let templist = Object.entries(columns).map(([columnId, column], index) =>{
         return{
             [columnId]: {value: '', visible: false}
@@ -104,13 +44,19 @@ const Content = () => {
         list = {...list, ...temp}
     })
 
+    //using useState to update the same list created in the above code segment
     const [newTaskVisible, setNewTaskVisible] = useState(list); 
+    
+    //setting the visibility of the newList form
     const [newListVisible, setNewListVisible] = useState(false);
 
-    const refs = useRef([...Array(Object.keys(columns).length)].map(() => React.createRef()));
+    const refs = useRef([...Array(colSize)].map(() => React.createRef()))
 
     return(
         <MainContent>
+
+            {/* Top Strip in the content */}
+
             <div className='TopStrip'>
                 <FcGlobe/>&nbsp;This board is set to public. Board Admins can change its visibility setting at any time.<span>Learn more here</span>
                 <CgClose
@@ -122,23 +68,13 @@ const Content = () => {
                     }}
                 />
             </div>
+
+            {/* Kanban Board Title */}
+
             <div className='MainContainer'>
                 <ContentHeader>
                     <h3>Kanban Board</h3>
-                    <div 
-                        style={{
-                            width: '32px',
-                            height: '32px',
-                            color: '#fff',
-                            backgroundColor: 'hsla(0,0%,100%,.3)',
-                            borderRadius: '3px',
-                            boxSizing: 'border-box',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }}
-                    >
+                    <div>
                         <AiOutlineStar/>
                     </div>
                     <div className='separator'/>
@@ -150,10 +86,11 @@ const Content = () => {
                         AH
                     </div>
                 </ContentHeader>
+
+                {/* Drag and Drop Area */}
+
                 <ContentDnD>
-                    <DragDropContext
-                        onDragEnd={result => onDragEnd(result, columns, setColumns)}
-                    >
+                    <DragDropContext onDragEnd={result => onDragEnd(result, columns, setColumns)}>
                         {Object.entries(columns).map(([columnId, column], index) => {
                         return (
                             <ListCard key={columnId}>
@@ -167,11 +104,7 @@ const Content = () => {
                                 <TaskCardWrapper {...provided.droppableProps} ref={provided.innerRef}>
                                     {column.items.map((item, index) => {
                                     return (
-                                        <Draggable
-                                        key={item.id}
-                                        draggableId={item.id}
-                                        index={index}
-                                        >
+                                        <Draggable key={item.id} draggableId={item.id} index={index}>
                                         {(provided, snapshot) => {
                                             return (
                                             <div
@@ -264,7 +197,6 @@ const Content = () => {
                                                     required placeholder='Enter a title for this card...' 
                                                     name='task'
                                                     ref={refs.current[index]}
-
                                                     onChange={(e) => {
                                                         let id = provided.droppableProps['data-rbd-droppable-id']
                                                         setNewTaskVisible({
@@ -272,7 +204,6 @@ const Content = () => {
                                                             [`${id}`]: {value: `${e.target.value}`, visible: true}
                                                         })
                                                     }}
-
                                                     value={Object.entries(newTaskVisible).find(([id, elem]) => (
                                                             id === provided.droppableProps['data-rbd-droppable-id']
                                                         ))[1].value
@@ -281,10 +212,7 @@ const Content = () => {
                                                 <div>
                                                     <button>Add List</button>
                                                     <CgClose 
-                                                    style={{
-                                                        fontSize: '18px', 
-                                                        cursor: 'pointer'
-                                                    }} 
+                                                    style={{ fontSize: '18px', cursor: 'pointer'}} 
                                                     onClick={() => {
                                                         let id = provided.droppableProps['data-rbd-droppable-id']
                                                         setNewTaskVisible({
@@ -305,9 +233,9 @@ const Content = () => {
                         );
                         })}
                     </DragDropContext>
-                    <div 
-                        className='AddMoreListWrapper'
-                    >
+                    <div className='AddMoreListWrapper'>
+                        {/* (Add another List) Area */}
+
                         <div 
                             className='NewCardWrapper' 
                             onClick={() => {
@@ -316,12 +244,13 @@ const Content = () => {
                                     inputRef.current.focus()
                                 }, 0)
                             }}
-                            style={{
-                                display: newListVisible === true ? 'none' : 'block'
-                            }}
+                            style={{display: newListVisible === true ? 'none' : 'block'}}
                         >
                             <HiPlus/>&nbsp;Add another List
                         </div>
+
+                        {/* Form that appears after clicking Add Another List  */}
+
                         <div
                             style={{
                                 display: newListVisible === false ? 'none' : 'block',
@@ -360,10 +289,7 @@ const Content = () => {
                                 <div>
                                     <button>Add List</button>
                                     <CgClose 
-                                        style={{
-                                            fontSize: '18px', 
-                                            cursor: 'pointer'
-                                        }} 
+                                        style={{ fontSize: '18px', cursor: 'pointer' }} 
                                         onClick={() => {
                                             setNewListVisible(false)
                                             setNewList('')

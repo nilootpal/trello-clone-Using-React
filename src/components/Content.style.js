@@ -65,6 +65,19 @@ export const ContentHeader = styled.div`
         }
     }
 
+    div{
+        width: 32px;
+        height: 32px;
+        color: #fff;
+        background-color: hsla(0,0%,100%,.3);
+        border-radius: 3px;
+        box-sizing: border-box;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center
+    }
+
     button{
         width: max-content;
         color: #fff;
