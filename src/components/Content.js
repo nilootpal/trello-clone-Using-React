@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd'
 import { ContentDnD, MainContent, ContentHeader, ListCard, TaskCardWrapper } from './Content.style'
 import { v4 as uuid } from 'uuid';
@@ -77,15 +77,16 @@ const onDragEnd = (result, columns, setColumns) => {
 
 
 const Content = () => { 
+    const inputRef = useRef();
     const [columns, setColumns] = useState(loadFromLocalStorage());
 
     useEffect(()=>{
-        if(Object.keys(loadFromLocalStorage()).length === 0){
-            saveToLocalStorage(columnsFromLS);
-        }
-        else{
+        // if(Object.keys(loadFromLocalStorage()).length === 0){
+        //     saveToLocalStorage(columnsFromLS);
+        // }
+        // else{
             saveToLocalStorage(columns)
-        }
+        // }
          
     }, [columns])
     
@@ -105,6 +106,8 @@ const Content = () => {
 
     const [newTaskVisible, setNewTaskVisible] = useState(list); 
     const [newListVisible, setNewListVisible] = useState(false);
+
+    const refs = useRef([...Array(Object.keys(columns).length)].map(() => React.createRef()));
 
     return(
         <MainContent>
@@ -205,6 +208,10 @@ const Content = () => {
                                                     ...newTaskVisible,
                                                     [`${id}`]: {value: '', visible: true}
                                                 })
+
+                                                setTimeout(() => {
+                                                    refs.current[index].current.focus();
+                                                })
                                             }}
                                             style={{
                                                 display: Object.entries(newTaskVisible).find(([id, elem]) => (
@@ -256,6 +263,7 @@ const Content = () => {
                                                     type='text' 
                                                     required placeholder='Enter a title for this card...' 
                                                     name='task'
+                                                    ref={refs.current[index]}
 
                                                     onChange={(e) => {
                                                         let id = provided.droppableProps['data-rbd-droppable-id']
@@ -302,7 +310,12 @@ const Content = () => {
                     >
                         <div 
                             className='NewCardWrapper' 
-                            onClick={() => setNewListVisible(true)}
+                            onClick={() => {
+                                setNewListVisible(true)
+                                setTimeout(() => {
+                                    inputRef.current.focus()
+                                }, 0)
+                            }}
                             style={{
                                 display: newListVisible === true ? 'none' : 'block'
                             }}
@@ -338,6 +351,7 @@ const Content = () => {
                             >
                                 <input 
                                     type='text' 
+                                    ref={inputRef}
                                     required placeholder='Enter list title...' 
                                     name='listTitle'
                                     onChange={(e) => setNewList(e.target.value)}
