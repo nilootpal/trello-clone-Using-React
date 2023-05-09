@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd'
 import { ContentDnD, MainContent, ContentHeader, ListCard, TaskCardWrapper } from './Content.style'
 import { v4 as uuid } from 'uuid';
@@ -306,3 +306,6 @@ const Content = () => {
 }
 
 export default Content
+
+
+
